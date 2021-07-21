@@ -1,5 +1,20 @@
+import axios from "axios"
+import { divide } from "lodash";
 import React from "react";
 import styled from "styled-components";
+import { classicNameResolver } from "typescript";
+import Champion from "../components/Champion";
+import ChampionModel from "../models/ChampionModel";
+import classNames from "classnames";
+interface ChampionListProps {
+
+}
+
+interface ChampionListState {
+    allChampions: ChampionModel[];
+    champions: ChampionModel[];
+    type: string;
+}
 
 const ChampionListPageWrapper = styled.div`
     display: flex;
@@ -9,23 +24,86 @@ const ChampionListPageWrapper = styled.div`
 `
 
 // List of champion page
-export default class ChampionsList extends React.Component {
+export default class ChampionsList extends React.Component<ChampionListProps, ChampionListState> {
+    constructor(props: ChampionListProps) {
+        super(props);
+
+        this.state = {
+            allChampions: [],
+            champions: [],
+            type:"ALL",
+        }
+    }
+
+    async componentDidMount() {
+        const response = await axios.get("http://opgg.dudco.kr/champion");
+        const allChampions = response.data.map((data: any) =>
+            new ChampionModel({
+                id: data.id, 
+                name: data.name, 
+                key: data.key, 
+                position: data.position
+            })
+        );
+        this.setState({
+            allChampions,
+            champions: allChampions,
+        });
+    }
+
+    onChangeType = (type: string) => () =>{
+        this.setState({
+            type,
+            champions: this.filterChampions(type),
+        });
+    }
+
+    filterChampions = (type: string) =>{
+        switch (type){
+            case "TOP":
+                return this.state.allChampions.filter(c=> c.position!!.indexOf("탑") > -1);
+            case "JUG":
+                return this.state.allChampions.filter(c=> c.position!!.indexOf("정글") > -1);
+            case "MID":
+                return this.state.allChampions.filter(c=> c.position!!.indexOf("미드") > -1);
+            case "ADC":
+                return this.state.allChampions.filter(c=> c.position!!.indexOf("바텀") > -1);
+            case "SUP":
+                return this.state.allChampions.filter(c=> c.position!!.indexOf("서포터") > -1);
+            default:
+                return this.state.allChampions;
+            
+        }
+    }
+
     render() {
         return (
             <ChampionListPageWrapper>
                 <ChampionsWrapper>
                     <div className="header">
                         <div className="item-wrap">
-                            <div className="item select">전체</div>
-                            <div className="item">탑</div>
-                            <div className="item">정글</div>
-                            <div className="item">미드</div>
-                            <div className="item">바텀</div>
-                            <div className="item">서포터</div>
+                            <div className={classNames("item", {select: this.state.type === "ALL" })} onClick={this.onChangeType("ALL")}>전체</div>
+                            <div className={classNames("item", {select: this.state.type === "TOP" })} onClick={this.onChangeType("TOP")}>탑</div>
+                            <div className={classNames("item", {select: this.state.type === "JUG" })} onClick={this.onChangeType("JUG")}>정글</div>
+                            <div className={classNames("item", {select: this.state.type === "MID" })} onClick={this.onChangeType("MID")}>미드</div>
+                            <div className={classNames("item", {select: this.state.type === "ADC" })} onClick={this.onChangeType("ADC")}>바텀</div>
+                            <div className={classNames("item", {select: this.state.type === "SUP" })} onClick={this.onChangeType("SUP")}>서포터</div>
                         </div>
                         <input type="text" placeholder="챔피언 검색 (가렌, ㄱㄹ ... )" />
                     </div>
-                    <div className="list"></div>
+                    <div className="list">
+                        {
+                            this.state.champions.map((data) =>
+                                <Champion
+                                    key = {data.id}
+                                    id={Number(data.id)||0}
+                                    position = {data.position || []}
+                                    name = {data.name || ""}
+                                />
+                            )
+                        }
+                        {[1,2,3,4,5,6].map(()=> <div style={{width:"82px", height:0}}/>)}
+                    </div>
                 </ChampionsWrapper>
                 <ChampionTrendWrapper>
                     trends
@@ -45,6 +123,7 @@ const ChampionsWrapper = styled.div`
         justify-content: space-between;
         padding: 0 17px;
         border-bottom: 1px solid #e9eff4;
+        margin-bottom: 10px;
 
         & > .item-wrap{
             display: flex;
@@ -73,8 +152,13 @@ const ChampionsWrapper = styled.div`
     }
 
     & > .list {
-        height: 100vh;
+        width: 564x;
         background-color: #f7f7f7;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        padding: 0 30px;
+        
     }
 `
 
